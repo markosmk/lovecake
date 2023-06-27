@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 import { Toaster } from '@/components/ui/toast';
-import { CakeIcon, FormInputIcon } from 'lucide-react';
+import { FormInputIcon } from 'lucide-react';
 import { ReactNode } from 'react';
 
 interface LayoutProps {
