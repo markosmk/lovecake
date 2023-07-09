@@ -1,6 +1,7 @@
-import { checkEnvironment } from '@/config/data';
-import { QuoteForm } from './quote-form';
 import Papa from 'papaparse';
+import { checkEnvironment } from '@/config/data';
+import { GooContent } from '@/config/types';
+import { QuoteForm } from './quote-form';
 
 const parseData = (data: any) => {
   return new Promise((resolve, reject) => {
@@ -17,7 +18,7 @@ const parseData = (data: any) => {
   });
 };
 
-async function getData() {
+const getData = async () => {
   const res = await fetch(checkEnvironment().concat('/api'), {
     next: { revalidate: 3600 }, // revalidate every hour
   });
@@ -26,8 +27,8 @@ async function getData() {
   }
   const data = await res.json();
   const response = await parseData(data.response);
-  return response;
-}
+  return response as GooContent[];
+};
 
 export default async function Page() {
   const data = await getData();
