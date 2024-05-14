@@ -1,4 +1,4 @@
-import { GooElement, GooContent } from '@/config/types';
+import { GooContent, GooElement } from '@/config/types';
 import { clsx, type ClassValue } from 'clsx';
 import { differenceInDays } from 'date-fns';
 import { twMerge } from 'tailwind-merge';
