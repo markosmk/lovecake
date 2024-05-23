@@ -1,0 +1,215 @@
+datasource db {
+    provider = "mongodb"
+    url      = env("DATABASE_URL")
+}
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+// generator zod {
+//     provider              = "zod-prisma"
+//     output                = "./zod"
+//     relationModel         = true
+//     modelCase             = "camelCase"
+//     modelSuffix           = "Schema"
+//     useDecimalJs          = true
+//     prismaJsonNullability = true
+// }
+
+enum Role {
+    USER
+    ADMIN
+}
+
+//_--------------------------------
+// Start For Lucia
+model User {
+    id            String    @id @default(auto()) @map("_id") @db.ObjectId
+    name          String?
+    email         String    @unique
+    emailVerified DateTime?
+    image         String?
+    sessions      Session[]
+    accounts      Account[] // for OAuth multiple
+
+    username       String? @unique
+    hashedPassword String?
+    role           Role    @default(USER)
+
+    // for recipes
+    recipes     Recipe[]
+    ingredients Ingredient[]
+    setting     Setting?
+
+    // for profile
+    pageOptions PageOptions?
+    blocks      Block[]
+
+    mpCustomerId       String?   @unique @map(name: "mp_customer_id")
+    mpSubscriptionId   String?   @unique @map(name: "mp_subscription_id")
+    mpPriceId          String?   @map(name: "mp_price_id")
+    mpCurrentPeriodEnd DateTime? @map(name: "mp_current_period_end")
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+// https://lucia-auth.com/guides/oauth/multiple-providers
+model Account {
+    id                String   @id @default(auto()) @map("_id") @db.ObjectId
+    userId            String   @db.ObjectId
+    type              String
+    providerId        String // provider_id
+    providerAccountId String // provider_user_id
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([providerId, providerAccountId])
+}
+
+// User IDs can't be generated due to compatibility across different databases (addressed in v3)
+// key IDs have a custom structure (addressed in v3)
+// Session IDs can't be object IDs since object IDs don't provide enough entropy
+model Session {
+    id        String   @id @map("_id")
+    userId    String   @db.ObjectId
+    expiresAt DateTime
+    user      User     @relation(references: [id], fields: [userId], onDelete: Cascade)
+
+    @@index([userId])
+}
+
+// End for Lucia
+//_--------------------------------
+
+//_--------------------------------
+// Start For Recipes
+enum Unit {
+    mg
+    g
+    kg
+    lb
+    oz
+    // volume
+    ml
+    l
+    cup
+    tbsp
+    tsp
+    // unit
+    un
+    // lengths
+    mm
+    cm
+    m
+    in
+    ft
+}
+
+model Recipe {
+    id               String   @id @default(auto()) @map("_id") @db.ObjectId
+    name             String
+    servings         Int
+    prepTime         Int
+    ingredientCost   Int?
+    supplyCost       Int?
+    laborCost        Int?
+    totalCost        Int?
+    suggestedPrice   Int?
+    profitPercentage Int?
+    createdAt        DateTime @default(now())
+    updatedAt        DateTime @updatedAt
+
+    ingredients IngredientRecipe[]
+
+    user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId String? @db.ObjectId
+
+    @@index([userId])
+}
+
+model Ingredient {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    name      String
+    quantity  Float
+    price     Float
+    unit      Unit
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    user             User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId           String?            @db.ObjectId
+    IngredientRecipe IngredientRecipe[]
+
+    @@index([userId])
+}
+
+model IngredientRecipe {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    quantity  Float
+    cost      Float
+    unit      Unit
+    createdAt DateTime @default(now())
+
+    ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+    ingredientId String     @db.ObjectId
+    Recipe       Recipe?    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+    recipeId     String?    @db.ObjectId
+}
+
+// End Recipes
+//_--------------------------------
+
+//_--------------------------------
+// Start Profile
+model PageOptions {
+    id     String  @id @default(auto()) @map("_id") @db.ObjectId
+    config Json
+    user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId String? @unique @db.ObjectId
+}
+
+model Block {
+    id    String @id @default(auto()) @map("_id") @db.ObjectId
+    title String
+
+    type        String
+    position    Float         @default(0)
+    active      Boolean       @default(true)
+    description String?
+    external    ExternalLink?
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId String? @db.ObjectId
+
+    @@index([userId])
+}
+
+type ExternalLink {
+    href String
+    name String?
+}
+
+// End Profile
+//_--------------------------------
+
+model Setting {
+    id             String   @id @default(auto()) @map("_id") @db.ObjectId
+    profit         Int?
+    costbyHour     Int?
+    workHoursByday Int?
+    salary         Int?
+    daysOfWork     String? // [1,2,3,4] days of week
+    fixedCosts     String? // JSON key -> value
+    others         String? // JSON key -> value
+    updatedAt      DateTime @default(now())
+
+    user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId String? @unique @db.ObjectId
+}
